@@ -63,10 +63,10 @@ export default function Dropzone({ onParsed }) {
                     <FileUp size={22} className="text-[var(--amber)]" />
                 )}
                 <div className="text-sm font-semibold text-[var(--ink-0)]">
-                    Drop .xy files here
+                    Drop XRD files here
                 </div>
                 <div className="mono text-[11px] text-[var(--ink-3)]">
-                    .xy · .xye · .txt · .dat · multi-select OK
+                    .xy · .xye · .txt · .csv · .pks · multi-select OK
                 </div>
             </div>
         </div>
@@ -81,7 +81,7 @@ export function UploadButton({ onParsed }) {
             <input
                 ref={inputRef}
                 type="file"
-                accept=".xy,.xye,.txt,.dat,.csv"
+                accept=".xy,.xye,.txt,.dat,.csv,.pks"
                 multiple
                 hidden
                 onChange={async (e) => {

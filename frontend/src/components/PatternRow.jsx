@@ -11,6 +11,7 @@ import {
     Loader2,
     CheckCircle2,
     Circle,
+    Scaling,
 } from "lucide-react";
 import { smoothPattern, subtractBackground } from "../lib/xrdApi";
 import { toast } from "sonner";
@@ -22,16 +23,26 @@ const FORMAT_LABEL = {
     xy: "xy",
 };
 
-export default function PatternRow({ pattern, onChange, onRemove }) {
+export default function PatternRow({
+    pattern,
+    onChange,
+    onRemove,
+    onNormalize,
+    referenceColor = "#ff5a5f",
+    hasMeasurement = false,
+}) {
     const [busy, setBusy] = useState(null); // 'smooth' | 'bg' | null
 
     const update = (patch) => onChange({ ...pattern, ...patch });
 
     const toggleReference = () => {
         const next = !pattern.isReference;
-        update({
+        onChange({
+            ...pattern,
             isReference: next,
             mode: next ? "droplines" : "line",
+            // switch to red when turning on; keep existing color when turning off
+            color: next ? referenceColor : pattern.color,
         });
     };
 
@@ -146,6 +157,18 @@ export default function PatternRow({ pattern, onChange, onRemove }) {
                     {FORMAT_LABEL[pattern.source_format] || pattern.source_format}
                 </span>
             </button>
+
+            {pattern.isReference && hasMeasurement && onNormalize && (
+                <button
+                    data-testid={`normalize-${pattern.id}`}
+                    onClick={onNormalize}
+                    className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] mono text-[var(--ink-2)] hover:text-[var(--ink-0)] bg-[var(--bg-2)] hover:bg-[var(--bg-3)] border border-[var(--line)] transition-all"
+                    title="Scale reference peaks to match the measurement's maximum"
+                >
+                    <Scaling size={12} />
+                    normalize to measurement
+                </button>
+            )}
 
             <div className="flex gap-1">
                 <button

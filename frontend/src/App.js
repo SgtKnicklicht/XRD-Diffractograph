@@ -12,8 +12,21 @@ import { PATTERN_COLORS } from "./lib/xrdApi";
 let _id = 0;
 const nextId = () => `p${++_id}`;
 
-function makePattern(data, index) {
+const REFERENCE_COLOR = "#ff5a5f";
+
+function computeRefScale(refYmax, measuredPatterns) {
+    const firstMeasured = measuredPatterns.find((p) => !p.isReference);
+    if (!firstMeasured || !refYmax) return 1;
+    const ratio = firstMeasured.y_max / refYmax;
+    return Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
+}
+
+function makePattern(data, index, existing) {
     const isRef = !!data.is_reference;
+    const color = isRef
+        ? REFERENCE_COLOR
+        : PATTERN_COLORS[index % PATTERN_COLORS.length];
+    const scale = isRef ? computeRefScale(data.y_max, existing) : 1;
     return {
         id: nextId(),
         name: data.name,
@@ -24,12 +37,12 @@ function makePattern(data, index) {
         x_max: data.x_max,
         y_max: data.y_max,
         source_format: data.source_format || "xy",
-        color: PATTERN_COLORS[index % PATTERN_COLORS.length],
+        color,
         visible: true,
         isReference: isRef,
         mode: isRef ? "droplines" : "line",
         offset: 0,
-        scale: 1,
+        scale,
         processed: null,
         smoothWindow: 11,
         bgIterations: 40,
@@ -41,13 +54,28 @@ export default function App() {
     const plotRef = useRef(null);
 
     const addPattern = (data) =>
-        setPatterns((prev) => [...prev, makePattern(data, prev.length)]);
+        setPatterns((prev) => [...prev, makePattern(data, prev.length, prev)]);
 
     const updatePattern = (id, next) =>
         setPatterns((prev) => prev.map((p) => (p.id === id ? next : p)));
 
     const removePattern = (id) =>
         setPatterns((prev) => prev.filter((p) => p.id !== id));
+
+    const normalizePattern = (id) => {
+        setPatterns((prev) => {
+            const ref = prev.find((p) => p.id === id);
+            if (!ref) return prev;
+            const target = prev.find((p) => !p.isReference && p.id !== id);
+            if (!target) {
+                toast.error("Load a measurement pattern first to normalize against");
+                return prev;
+            }
+            const scale = computeRefScale(ref.y_max, [target]);
+            toast.success(`Normalized to "${target.name}" (${scale.toFixed(2)}×)`);
+            return prev.map((p) => (p.id === id ? { ...p, scale } : p));
+        });
+    };
 
     const totalPoints = useMemo(
         () => patterns.reduce((s, p) => s + p.points, 0),
@@ -162,9 +190,11 @@ export default function App() {
                                 no patterns
                             </div>
                             Drop a <span className="mono text-[var(--amber)]">.xy</span>{" "}
-                            file to begin. Mark reference patterns as{" "}
-                            <span className="mono text-[var(--teal)]">sticks</span>{" "}
-                            to display them as droplines.
+                            measurement or a reference file (
+                            <span className="mono text-[var(--teal)]">.pks</span>,{" "}
+                            <span className="mono text-[var(--teal)]">.txt</span>,{" "}
+                            <span className="mono text-[var(--teal)]">.csv</span>) —
+                            references auto-plot as droplines.
                         </div>
                     ) : (
                         <div className="space-y-3" data-testid="pattern-list">
@@ -172,8 +202,13 @@ export default function App() {
                                 <PatternRow
                                     key={p.id}
                                     pattern={p}
+                                    referenceColor={REFERENCE_COLOR}
+                                    hasMeasurement={patterns.some(
+                                        (q) => !q.isReference && q.id !== p.id
+                                    )}
                                     onChange={(next) => updatePattern(p.id, next)}
                                     onRemove={() => removePattern(p.id)}
+                                    onNormalize={() => normalizePattern(p.id)}
                                 />
                             ))}
                         </div>
@@ -233,16 +268,17 @@ function Legend() {
                     measured pattern
                 </li>
                 <li>
-                    <span className="text-[var(--teal)] mono">sticks</span> — reference
-                    pattern as droplines
+                    <span className="mono" style={{ color: "#ff5a5f" }}>sticks</span>{" "}
+                    — reference pattern as droplines (auto-detected for .pks / winxpow
+                    / csv)
+                </li>
+                <li>
+                    <span className="text-[var(--teal)] mono">normalize</span> — scale
+                    reference to match measurement peak
                 </li>
                 <li>
                     <span className="text-[var(--violet)] mono">y-offset</span> — stack
                     patterns vertically
-                </li>
-                <li>
-                    <span className="text-[var(--coral)] mono">scale</span> — normalise
-                    intensities
                 </li>
             </ul>
         </div>
