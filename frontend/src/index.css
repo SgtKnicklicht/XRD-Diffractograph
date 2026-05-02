@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+    --bg-0: #0a0d14;
+    --bg-1: #11151f;
+    --bg-2: #1a1f2c;
+    --bg-3: #252b3a;
+    --line: #2a3142;
+    --line-soft: #1f2533;
+    --ink-0: #f1f4fb;
+    --ink-1: #c9d1de;
+    --ink-2: #8e98ac;
+    --ink-3: #5a6478;
+    --amber: #f5b94a;
+    --amber-soft: #b88836;
+    --teal: #4dd9c8;
+    --coral: #ff7a6b;
+    --violet: #b08bff;
+    --grid: rgba(255, 255, 255, 0.045);
+}
+
+html, body, #root {
+    height: 100%;
+    background: var(--bg-0);
+}
+
+body {
+    margin: 0;
+    font-family: "Manrope", system-ui, -apple-system, sans-serif;
+    color: var(--ink-0);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss01", "cv11";
+    background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(245, 185, 74, 0.06), transparent 60%),
+        radial-gradient(900px 500px at 110% 110%, rgba(77, 217, 200, 0.05), transparent 60%),
+        var(--bg-0);
+    background-attachment: fixed;
+}
+
+code, .mono {
+    font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+    font-feature-settings: "zero", "ss02";
+}
+
+::selection { background: rgba(245, 185, 74, 0.3); color: var(--ink-0); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #313a4f; }
+
+@layer base {
+    :root {
+        --background: 222 35% 6%;
+        --foreground: 220 25% 96%;
+        --card: 222 28% 9%;
+        --card-foreground: 220 25% 96%;
+        --popover: 222 28% 9%;
+        --popover-foreground: 220 25% 96%;
+        --primary: 38 88% 63%;
+        --primary-foreground: 222 40% 8%;
+        --secondary: 222 25% 14%;
+        --secondary-foreground: 220 25% 96%;
+        --muted: 222 22% 12%;
+        --muted-foreground: 220 12% 65%;
+        --accent: 222 25% 16%;
+        --accent-foreground: 220 25% 96%;
+        --destructive: 4 76% 58%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 222 18% 18%;
+        --input: 222 22% 14%;
+        --ring: 38 88% 63%;
+        --radius: 0.5rem;
+    }
+}
+
+@layer base {
+    * { @apply border-border; }
+    body { @apply bg-background text-foreground; }
+}
+
+/* dotted grid background detail */
+.grid-bg {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    background-size: 22px 22px;
+    background-position: -1px -1px;
+}
+
+.btn-amber {
+    background: linear-gradient(180deg, #f5b94a 0%, #e9a834 100%);
+    color: #1a1206;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 8px 24px -10px rgba(245, 185, 74, 0.55);
+    transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+}
+.btn-amber:hover { filter: brightness(1.05); transform: translateY(-1px); }
+.btn-amber:active { transform: translateY(0); filter: brightness(0.97); }
+
+.surface {
+    background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+}
+
+.chip {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+}
+
+.dropzone {
+    border: 1.5px dashed var(--line);
+    transition: border-color 160ms ease, background-color 160ms ease;
+}
+.dropzone.drag {
+    border-color: var(--amber);
+    background: rgba(245, 185, 74, 0.06);
+}
+
+@keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fade-up 320ms cubic-bezier(.2,.7,.2,1) both; }

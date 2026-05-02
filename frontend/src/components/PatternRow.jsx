@@ -1,0 +1,226 @@
+import { useState } from "react";
+import {
+    Eye,
+    EyeOff,
+    Trash2,
+    Wand2,
+    Layers3,
+    LineChart as LineIcon,
+    BarChart3,
+    Undo2,
+    Loader2,
+} from "lucide-react";
+import { smoothPattern, subtractBackground } from "../lib/xrdApi";
+import { toast } from "sonner";
+
+export default function PatternRow({ pattern, onChange, onRemove }) {
+    const [busy, setBusy] = useState(null); // 'smooth' | 'bg' | null
+
+    const update = (patch) => onChange({ ...pattern, ...patch });
+
+    const handleSmooth = async () => {
+        try {
+            setBusy("smooth");
+            const ys = await smoothPattern(
+                pattern.processed?.y ?? pattern.y,
+                pattern.smoothWindow ?? 11,
+                3
+            );
+            update({ processed: { ...(pattern.processed || {}), y: ys, smoothed: true } });
+            toast.success(`Smoothed "${pattern.name}"`);
+        } catch (e) {
+            toast.error(e.response?.data?.detail || "Smoothing failed");
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const handleBg = async () => {
+        try {
+            setBusy("bg");
+            const { y } = await subtractBackground(
+                pattern.processed?.y ?? pattern.y,
+                pattern.bgIterations ?? 40
+            );
+            update({ processed: { ...(pattern.processed || {}), y, bgRemoved: true } });
+            toast.success(`Background removed from "${pattern.name}"`);
+        } catch (e) {
+            toast.error(e.response?.data?.detail || "Background subtraction failed");
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const handleReset = () => {
+        update({ processed: null });
+        toast("Reset to raw data");
+    };
+
+    return (
+        <div
+            data-testid={`pattern-row-${pattern.id}`}
+            className="surface fade-up p-3 space-y-3"
+            style={{ borderLeft: `3px solid ${pattern.color}` }}
+        >
+            <div className="flex items-center gap-2">
+                <button
+                    data-testid={`toggle-visible-${pattern.id}`}
+                    onClick={() => update({ visible: !pattern.visible })}
+                    className="text-[var(--ink-2)] hover:text-[var(--ink-0)] transition-colors"
+                    title={pattern.visible ? "Hide" : "Show"}
+                >
+                    {pattern.visible ? <Eye size={16} /> : <EyeOff size={16} />}
+                </button>
+                <input
+                    data-testid={`pattern-name-${pattern.id}`}
+                    value={pattern.name}
+                    onChange={(e) => update({ name: e.target.value })}
+                    className="bg-transparent flex-1 text-sm font-semibold focus:outline-none truncate"
+                />
+                <input
+                    data-testid={`pattern-color-${pattern.id}`}
+                    type="color"
+                    value={pattern.color}
+                    onChange={(e) => update({ color: e.target.value })}
+                    className="w-6 h-6 rounded cursor-pointer bg-transparent border border-[var(--line)]"
+                    title="Pattern color"
+                />
+                <button
+                    data-testid={`remove-pattern-${pattern.id}`}
+                    onClick={onRemove}
+                    className="text-[var(--ink-3)] hover:text-[var(--coral)] transition-colors"
+                    title="Remove"
+                >
+                    <Trash2 size={15} />
+                </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[11px] mono text-[var(--ink-2)]">
+                <div>
+                    pts <span className="text-[var(--ink-0)]">{pattern.points}</span>
+                </div>
+                <div>
+                    range{" "}
+                    <span className="text-[var(--ink-0)]">
+                        {pattern.x_min.toFixed(2)}–{pattern.x_max.toFixed(2)}°
+                    </span>
+                </div>
+            </div>
+
+            <div className="flex gap-1">
+                <button
+                    data-testid={`mode-line-${pattern.id}`}
+                    onClick={() => update({ mode: "line" })}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs transition-all ${
+                        pattern.mode === "line"
+                            ? "bg-[var(--bg-3)] text-[var(--ink-0)]"
+                            : "bg-transparent text-[var(--ink-2)] hover:text-[var(--ink-0)]"
+                    }`}
+                >
+                    <LineIcon size={13} /> line
+                </button>
+                <button
+                    data-testid={`mode-droplines-${pattern.id}`}
+                    onClick={() => update({ mode: "droplines" })}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs transition-all ${
+                        pattern.mode === "droplines"
+                            ? "bg-[var(--bg-3)] text-[var(--ink-0)]"
+                            : "bg-transparent text-[var(--ink-2)] hover:text-[var(--ink-0)]"
+                    }`}
+                >
+                    <BarChart3 size={13} /> sticks
+                </button>
+            </div>
+
+            <div className="space-y-1.5">
+                <Slider
+                    label="y-offset"
+                    value={pattern.offset}
+                    onChange={(v) => update({ offset: v })}
+                    min={-pattern.y_max * 2}
+                    max={pattern.y_max * 4}
+                    step={pattern.y_max / 200}
+                    format={(v) => v.toFixed(0)}
+                    testId={`offset-${pattern.id}`}
+                />
+                <Slider
+                    label="scale"
+                    value={pattern.scale}
+                    onChange={(v) => update({ scale: v })}
+                    min={0.05}
+                    max={5}
+                    step={0.01}
+                    format={(v) => v.toFixed(2) + "×"}
+                    testId={`scale-${pattern.id}`}
+                />
+            </div>
+
+            <div className="flex gap-1.5 flex-wrap">
+                <ProcessButton
+                    onClick={handleSmooth}
+                    busy={busy === "smooth"}
+                    icon={<Wand2 size={12} />}
+                    label="smooth"
+                    active={pattern.processed?.smoothed}
+                    testId={`smooth-${pattern.id}`}
+                />
+                <ProcessButton
+                    onClick={handleBg}
+                    busy={busy === "bg"}
+                    icon={<Layers3 size={12} />}
+                    label="bg subtract"
+                    active={pattern.processed?.bgRemoved}
+                    testId={`bg-${pattern.id}`}
+                />
+                {pattern.processed && (
+                    <button
+                        data-testid={`reset-${pattern.id}`}
+                        onClick={handleReset}
+                        className="flex items-center gap-1 px-2 py-1 text-[11px] mono rounded-md text-[var(--ink-2)] hover:text-[var(--ink-0)] hover:bg-[var(--bg-3)] transition-all"
+                    >
+                        <Undo2 size={11} /> raw
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function ProcessButton({ onClick, busy, icon, label, active, testId }) {
+    return (
+        <button
+            data-testid={testId}
+            disabled={busy}
+            onClick={onClick}
+            className={`flex items-center gap-1.5 px-2 py-1 text-[11px] mono rounded-md transition-all border ${
+                active
+                    ? "border-[var(--amber)] text-[var(--amber)] bg-[rgba(245,185,74,0.08)]"
+                    : "border-[var(--line)] text-[var(--ink-2)] hover:text-[var(--ink-0)] hover:border-[var(--ink-3)]"
+            } ${busy ? "opacity-60 cursor-wait" : ""}`}
+        >
+            {busy ? <Loader2 size={12} className="animate-spin" /> : icon}
+            {label}
+        </button>
+    );
+}
+
+function Slider({ label, value, onChange, min, max, step, format, testId }) {
+    return (
+        <div>
+            <div className="flex justify-between mono text-[10px] text-[var(--ink-3)] mb-0.5">
+                <span>{label}</span>
+                <span className="text-[var(--ink-1)]">{format(value)}</span>
+            </div>
+            <input
+                data-testid={testId}
+                type="range"
+                min={min}
+                max={max}
+                step={step}
+                value={value}
+                onChange={(e) => onChange(parseFloat(e.target.value))}
+                className="w-full accent-[var(--amber)]"
+            />
+        </div>
+    );
+}
