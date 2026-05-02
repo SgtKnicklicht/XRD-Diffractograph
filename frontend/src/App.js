@@ -12,16 +12,18 @@ import { PATTERN_COLORS } from "./lib/xrdApi";
 let _id = 0;
 const nextId = () => `p${++_id}`;
 
-// distinguishable red/warm palette for reference patterns
+// distinguishable palette for reference patterns — starts red, then jumps
+// through clearly different hues (teal, yellow, violet, …) for dark-mode
+// discriminability
 const REFERENCE_COLORS = [
     "#ff5a5f", // red
+    "#4dd9c8", // teal
+    "#ffd166", // yellow
+    "#b08bff", // violet
     "#ff9f43", // orange
+    "#7fd1ff", // sky blue
     "#f368e0", // magenta
-    "#ee5253", // coral
-    "#c8415e", // raspberry
-    "#ff6b9d", // pink
-    "#d63031", // brick
-    "#f97316", // tangerine
+    "#a3e635", // lime
 ];
 
 function nextRefColor(patterns, skipId) {
@@ -223,8 +225,10 @@ export default function App() {
                             <div className="mono text-[11px] uppercase tracking-widest text-[var(--ink-3)] mb-2">
                                 no patterns
                             </div>
-                            Drop a <span className="mono text-[var(--amber)]">.xy</span>{" "}
-                            measurement or a reference file (
+                            Drop a measurement (
+                            <span className="mono text-[var(--amber)]">.xy</span>,{" "}
+                            <span className="mono text-[var(--amber)]">.raw</span>) or
+                            a reference (
                             <span className="mono text-[var(--teal)]">.pks</span>,{" "}
                             <span className="mono text-[var(--teal)]">.txt</span>,{" "}
                             <span className="mono text-[var(--teal)]">.csv</span>) —
@@ -303,7 +307,7 @@ export default function App() {
             <footer className="border-t border-[var(--line-soft)] mt-4">
                 <div className="max-w-[1600px] mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-3 text-[11px] mono text-[var(--ink-3)]">
                     <span>
-                        savitzky-golay smoothing · snip background ·{" "}
+                        savitzky-golay smoothing ·{" "}
                         <span className="text-[var(--ink-1)]">scipy</span> +{" "}
                         <span className="text-[var(--ink-1)]">plotly</span>
                     </span>

@@ -4,7 +4,6 @@ import {
     EyeOff,
     Trash2,
     Wand2,
-    Layers3,
     LineChart as LineIcon,
     BarChart3,
     Undo2,
@@ -13,12 +12,13 @@ import {
     Circle,
     Scaling,
 } from "lucide-react";
-import { smoothPattern, subtractBackground } from "../lib/xrdApi";
+import { smoothPattern } from "../lib/xrdApi";
 import { toast } from "sonner";
 
 const FORMAT_LABEL = {
     pks: "stoe · pks",
     "stoe-theo": "winxpow",
+    "stoe-raw": "stoe · raw",
     csv: "csv",
     xy: "xy",
 };
@@ -31,7 +31,7 @@ export default function PatternRow({
     onToggleReference,
     hasMeasurement = false,
 }) {
-    const [busy, setBusy] = useState(null); // 'smooth' | 'bg' | null
+    const [busy, setBusy] = useState(null); // 'smooth' | null
 
     const update = (patch) => onChange({ ...pattern, ...patch });
 
@@ -47,22 +47,6 @@ export default function PatternRow({
             toast.success(`Smoothed "${pattern.name}"`);
         } catch (e) {
             toast.error(e.response?.data?.detail || "Smoothing failed");
-        } finally {
-            setBusy(null);
-        }
-    };
-
-    const handleBg = async () => {
-        try {
-            setBusy("bg");
-            const { y } = await subtractBackground(
-                pattern.processed?.y ?? pattern.y,
-                pattern.bgIterations ?? 40
-            );
-            update({ processed: { ...(pattern.processed || {}), y, bgRemoved: true } });
-            toast.success(`Background removed from "${pattern.name}"`);
-        } catch (e) {
-            toast.error(e.response?.data?.detail || "Background subtraction failed");
         } finally {
             setBusy(null);
         }
@@ -190,10 +174,10 @@ export default function PatternRow({
                     value={pattern.offset}
                     onChange={(v) => update({ offset: v })}
                     onReset={() => update({ offset: 0 })}
-                    min={-pattern.y_max}
-                    max={pattern.y_max * 1.5}
-                    step={pattern.y_max / 1000}
-                    format={(v) => v.toFixed(1)}
+                    min={-pattern.y_max * 0.5}
+                    max={pattern.y_max}
+                    step={pattern.y_max / 4000}
+                    format={(v) => v.toFixed(2)}
                     testId={`offset-${pattern.id}`}
                 />
                 <Slider
@@ -201,10 +185,10 @@ export default function PatternRow({
                     value={pattern.scale}
                     onChange={(v) => update({ scale: v })}
                     onReset={() => update({ scale: 1 })}
-                    min={0.05}
-                    max={5}
-                    step={0.01}
-                    format={(v) => v.toFixed(2) + "×"}
+                    min={0.1}
+                    max={3}
+                    step={0.002}
+                    format={(v) => v.toFixed(3) + "×"}
                     testId={`scale-${pattern.id}`}
                 />
             </div>
@@ -217,14 +201,6 @@ export default function PatternRow({
                     label="smooth"
                     active={pattern.processed?.smoothed}
                     testId={`smooth-${pattern.id}`}
-                />
-                <ProcessButton
-                    onClick={handleBg}
-                    busy={busy === "bg"}
-                    icon={<Layers3 size={12} />}
-                    label="bg subtract"
-                    active={pattern.processed?.bgRemoved}
-                    testId={`bg-${pattern.id}`}
                 />
                 {pattern.processed && (
                     <button

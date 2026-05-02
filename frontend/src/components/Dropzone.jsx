@@ -47,7 +47,7 @@ export default function Dropzone({ onParsed }) {
             <input
                 ref={inputRef}
                 type="file"
-                accept=".xy,.xye,.txt,.dat,.csv,.pks"
+                accept=".xy,.xye,.txt,.dat,.csv,.pks,.raw"
                 multiple
                 hidden
                 onChange={(e) => {
@@ -66,7 +66,7 @@ export default function Dropzone({ onParsed }) {
                     Drop XRD files here
                 </div>
                 <div className="mono text-[11px] text-[var(--ink-3)]">
-                    .xy · .xye · .txt · .csv · .pks · multi-select OK
+                    .xy · .xye · .txt · .csv · .pks · .raw · multi-select OK
                 </div>
             </div>
         </div>
@@ -81,7 +81,7 @@ export function UploadButton({ onParsed }) {
             <input
                 ref={inputRef}
                 type="file"
-                accept=".xy,.xye,.txt,.dat,.csv,.pks"
+                accept=".xy,.xye,.txt,.dat,.csv,.pks,.raw"
                 multiple
                 hidden
                 onChange={async (e) => {

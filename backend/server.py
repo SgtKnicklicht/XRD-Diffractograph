@@ -50,14 +50,8 @@ class SmoothRequest(BaseModel):
     polyorder: int = Field(3, ge=1, le=6)
 
 
-class BackgroundRequest(BaseModel):
-    y: List[float]
-    iterations: int = Field(40, ge=1, le=500)
-
-
 class ProcessedResponse(BaseModel):
     y: List[float]
-    background: Optional[List[float]] = None
 
 
 # ------------- helpers -------------
@@ -181,12 +175,103 @@ def parse_semicolon_csv(text: str) -> tuple[list[float], list[float]]:
     return xs, ys
 
 
-def detect_and_parse(filename: str, text: str) -> tuple[list[float], list[float], str, bool]:
+def parse_stoe_raw(raw: bytes) -> tuple[list[float], list[float]]:
+    """STOE Powder Diffraction RAW (magic 'RAW_1.06').
+
+    Empirical layout (derived from real STOE files):
+    * bytes 0..7   : magic 'RAW_1.06'
+    * byte  342    : step 2θ  (float32 little-endian)
+    * byte  0x218  : end 2θ  (float32 little-endian)
+    * header ends at offset len-4*N; data is int32 LE counts until end of file,
+      trailing zeros are padding.
+    Start 2θ is derived as `end - (n_real-1)*step` after trimming trailing zeros.
+    """
+    import struct
+    import numpy as np
+
+    if len(raw) < 32 or raw[:8] != b"RAW_1.06":
+        return [], []
+
+    def read_f32(off: int) -> float | None:
+        try:
+            v = struct.unpack("<f", raw[off:off + 4])[0]
+            return v if v == v else None  # filter NaN
+        except Exception:  # noqa: BLE001
+            return None
+
+    # 1. step size
+    step = read_f32(342)
+    if not step or not (0.001 < step < 1.0):
+        step = None
+        for off in range(256, min(2000, len(raw)) - 4):
+            v = read_f32(off)
+            if v and 0.001 < v < 1.0 and abs(v - round(v, 4)) < 1e-7:
+                step = v
+                break
+    if not step:
+        step = 0.015
+
+    # 2. end 2θ
+    end_angle = read_f32(0x218)
+    if not end_angle or not (1.0 < end_angle < 180.0):
+        end_angle = None
+        for off in range(0x200, min(0x400, len(raw)) - 4, 4):
+            v = read_f32(off)
+            if v and 5.0 < v <= 180.0 and abs(v - round(v, 3)) < 1e-5:
+                end_angle = v
+                break
+    if not end_angle:
+        end_angle = 60.0
+
+    # 3. data buffer: fills last (file_size - header) bytes as int32 LE.
+    # For RAW_1.06 the header is 2948 bytes; fallback: try sizes that produce a
+    # plausible int32 count histogram (values mostly small non-negative ints).
+    for header_size in (2948, 2944, 2048, 1024):
+        if header_size >= len(raw):
+            continue
+        nbytes = len(raw) - header_size
+        if nbytes % 4 != 0:
+            continue
+        arr = np.frombuffer(raw[header_size:], dtype="<i4")
+        if arr.size < 100:
+            continue
+        if arr.min() < -10 or arr.max() > 1_000_000_000:
+            continue
+        break
+    else:
+        return [], []
+
+    # 4. trim trailing zeros (buffer padding)
+    nz = np.nonzero(arr)[0]
+    if nz.size == 0:
+        return [], []
+    last = int(nz[-1]) + 1
+    data = arr[:last]
+
+    # 5. derive start: `end_angle` in the header marks the scan stop, which
+    # sits one step past the last recorded bin, so start = end - N*step.
+    start_angle = end_angle - len(data) * step
+    xs = [start_angle + i * step for i in range(len(data))]
+    ys = [float(v) for v in data]
+    return xs, ys
+
+
+def detect_and_parse(filename: str, raw_bytes: bytes) -> tuple[list[float], list[float], str, bool]:
     """Auto-detect format. Returns (x, y, format_label, is_reference).
 
     Reference files are peak lists (usually sparse, discrete 2θ values).
+    Binary .raw formats operate on bytes; text formats decode as UTF-8.
     """
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+    # 0) Binary STOE RAW_1.06
+    if ext == "raw" or raw_bytes[:8] == b"RAW_1.06":
+        xs, ys = parse_stoe_raw(raw_bytes)
+        if len(xs) >= 2:
+            return xs, ys, "stoe-raw", False
+
+    # text-based formats below
+    text = raw_bytes.decode("utf-8", errors="ignore")
     head = text[:8192].lower()
 
     # 1) STOE / Match! peak file
@@ -216,13 +301,8 @@ def detect_and_parse(filename: str, text: str) -> tuple[list[float], list[float]
 
 
 def snip_background(y: np.ndarray, iterations: int = 40) -> np.ndarray:
-    """SNIP (Statistics-sensitive Non-linear Iterative Peak-clipping) algorithm.
-
-    Standard XRD background estimator. Operates on log-log-square transformed
-    intensity then transforms back.
-    """
+    """Unused — retained for reference, may return to the UI later."""
     y = np.asarray(y, dtype=float)
-    # avoid log of non-positive
     offset = max(0.0, -y.min() + 1.0)
     v = np.log(np.log(np.sqrt(y + offset) + 1.0) + 1.0)
     n = len(v)
@@ -246,18 +326,17 @@ async def root():
 async def parse_file(file: UploadFile = File(...)):
     try:
         raw = await file.read()
-        text = raw.decode("utf-8", errors="ignore")
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"could not read file: {exc}")
 
     filename = file.filename or "pattern"
-    xs, ys, fmt, is_ref = detect_and_parse(filename, text)
+    xs, ys, fmt, is_ref = detect_and_parse(filename, raw)
     if len(xs) < 2:
         raise HTTPException(
             status_code=400,
             detail=(
                 "No numeric two-column data found. Supported: .xy, .xye, .txt, "
-                ".csv, .pks (STOE/Match!), WinXPOW Theo output."
+                ".csv, .pks (STOE/Match!), .raw (STOE RAW_1.06), WinXPOW Theo output."
             ),
         )
 
@@ -290,16 +369,6 @@ async def smooth(req: SmoothRequest):
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=str(exc))
     return ProcessedResponse(y=ys.tolist())
-
-
-@api.post("/xrd/background", response_model=ProcessedResponse)
-async def background(req: BackgroundRequest):
-    y = np.asarray(req.y, dtype=float)
-    if len(y) < 5:
-        raise HTTPException(status_code=400, detail="not enough points")
-    bg = snip_background(y, iterations=req.iterations)
-    corrected = y - bg
-    return ProcessedResponse(y=corrected.tolist(), background=bg.tolist())
 
 
 app.include_router(api)

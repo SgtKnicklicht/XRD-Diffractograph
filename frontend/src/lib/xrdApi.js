@@ -17,19 +17,15 @@ export async function smoothPattern(y, window = 11, polyorder = 3) {
     return data.y;
 }
 
-export async function subtractBackground(y, iterations = 40) {
-    const { data } = await axios.post(`${API}/xrd/background`, { y, iterations });
-    return data; // { y, background }
-}
-
-// 8-color palette tuned for dark backgrounds
+// 8-color palette tuned for dark backgrounds — amber primary for measurements,
+// then distinct hues avoiding the reference palette start (red/teal)
 export const PATTERN_COLORS = [
     "#f5b94a", // amber
-    "#4dd9c8", // teal
+    "#ffffff", // bright white
+    "#c9d1de", // warm grey
     "#ff7a6b", // coral
     "#b08bff", // violet
-    "#7fd1ff", // sky
     "#a3e635", // lime
-    "#f5a3d4", // pink
+    "#7fd1ff", // sky
     "#ffd166", // sand
 ];
