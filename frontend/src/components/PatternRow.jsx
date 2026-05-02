@@ -28,23 +28,12 @@ export default function PatternRow({
     onChange,
     onRemove,
     onNormalize,
-    referenceColor = "#ff5a5f",
+    onToggleReference,
     hasMeasurement = false,
 }) {
     const [busy, setBusy] = useState(null); // 'smooth' | 'bg' | null
 
     const update = (patch) => onChange({ ...pattern, ...patch });
-
-    const toggleReference = () => {
-        const next = !pattern.isReference;
-        onChange({
-            ...pattern,
-            isReference: next,
-            mode: next ? "droplines" : "line",
-            // switch to red when turning on; keep existing color when turning off
-            color: next ? referenceColor : pattern.color,
-        });
-    };
 
     const handleSmooth = async () => {
         try {
@@ -137,7 +126,7 @@ export default function PatternRow({
 
             <button
                 data-testid={`reference-toggle-${pattern.id}`}
-                onClick={toggleReference}
+                onClick={onToggleReference}
                 className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md border transition-all ${
                     pattern.isReference
                         ? "border-[var(--teal)] bg-[rgba(77,217,200,0.08)] text-[var(--teal)]"

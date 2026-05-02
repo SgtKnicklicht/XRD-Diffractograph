@@ -12,7 +12,22 @@ import { PATTERN_COLORS } from "./lib/xrdApi";
 let _id = 0;
 const nextId = () => `p${++_id}`;
 
-const REFERENCE_COLOR = "#ff5a5f";
+// distinguishable red/warm palette for reference patterns
+const REFERENCE_COLORS = [
+    "#ff5a5f", // red
+    "#ff9f43", // orange
+    "#f368e0", // magenta
+    "#ee5253", // coral
+    "#c8415e", // raspberry
+    "#ff6b9d", // pink
+    "#d63031", // brick
+    "#f97316", // tangerine
+];
+
+function nextRefColor(patterns, skipId) {
+    const used = patterns.filter((p) => p.isReference && p.id !== skipId).length;
+    return REFERENCE_COLORS[used % REFERENCE_COLORS.length];
+}
 
 function computeRefScale(refYmax, measuredPatterns) {
     const firstMeasured = measuredPatterns.find((p) => !p.isReference);
@@ -21,11 +36,12 @@ function computeRefScale(refYmax, measuredPatterns) {
     return Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
 }
 
-function makePattern(data, index, existing) {
+function makePattern(data, existing) {
     const isRef = !!data.is_reference;
+    const measuredIndex = existing.filter((p) => !p.isReference).length;
     const color = isRef
-        ? REFERENCE_COLOR
-        : PATTERN_COLORS[index % PATTERN_COLORS.length];
+        ? nextRefColor(existing)
+        : PATTERN_COLORS[measuredIndex % PATTERN_COLORS.length];
     const scale = isRef ? computeRefScale(data.y_max, existing) : 1;
     return {
         id: nextId(),
@@ -51,13 +67,31 @@ function makePattern(data, index, existing) {
 
 export default function App() {
     const [patterns, setPatterns] = useState([]);
+    const [aspect, setAspect] = useState("16:9"); // '16:9' | '21:9' | '4:3' | 'auto'
     const plotRef = useRef(null);
 
     const addPattern = (data) =>
-        setPatterns((prev) => [...prev, makePattern(data, prev.length, prev)]);
+        setPatterns((prev) => [...prev, makePattern(data, prev)]);
 
     const updatePattern = (id, next) =>
         setPatterns((prev) => prev.map((p) => (p.id === id ? next : p)));
+
+    const toggleReference = (id) => {
+        setPatterns((prev) => {
+            const target = prev.find((p) => p.id === id);
+            if (!target) return prev;
+            const becomesRef = !target.isReference;
+            return prev.map((p) => {
+                if (p.id !== id) return p;
+                return {
+                    ...p,
+                    isReference: becomesRef,
+                    mode: becomesRef ? "droplines" : "line",
+                    color: becomesRef ? nextRefColor(prev, id) : p.color,
+                };
+            });
+        });
+    };
 
     const removePattern = (id) =>
         setPatterns((prev) => prev.filter((p) => p.id !== id));
@@ -202,13 +236,13 @@ export default function App() {
                                 <PatternRow
                                     key={p.id}
                                     pattern={p}
-                                    referenceColor={REFERENCE_COLOR}
                                     hasMeasurement={patterns.some(
                                         (q) => !q.isReference && q.id !== p.id
                                     )}
                                     onChange={(next) => updatePattern(p.id, next)}
                                     onRemove={() => removePattern(p.id)}
                                     onNormalize={() => normalizePattern(p.id)}
+                                    onToggleReference={() => toggleReference(p.id)}
                                 />
                             ))}
                         </div>
@@ -218,8 +252,8 @@ export default function App() {
                 </aside>
 
                 {/* plot area */}
-                <section className="surface p-3 lg:p-5 min-h-[560px] flex flex-col">
-                    <div className="flex items-center justify-between mb-2">
+                <section className="surface p-3 lg:p-5 flex flex-col">
+                    <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
                         <div>
                             <div className="text-[11px] mono uppercase tracking-[0.16em] text-[var(--ink-3)]">
                                 Diffractogram
@@ -228,14 +262,40 @@ export default function App() {
                                 Intensity vs 2θ
                             </div>
                         </div>
-                        {patterns.length > 0 && (
-                            <div className="mono text-[11px] text-[var(--ink-3)] hidden md:block">
-                                scroll-to-zoom · drag-to-pan · double-click / middle-click to reset
+                        <div className="flex items-center gap-3">
+                            {patterns.length > 0 && (
+                                <div className="mono text-[11px] text-[var(--ink-3)] hidden xl:block">
+                                    scroll-to-zoom · drag-to-pan · double-click / middle-click to reset
+                                </div>
+                            )}
+                            <div
+                                className="flex items-center gap-0.5 p-0.5 rounded-md bg-[var(--bg-2)] border border-[var(--line)]"
+                                data-testid="aspect-selector"
+                            >
+                                {["21:9", "16:9", "4:3", "auto"].map((r) => (
+                                    <button
+                                        key={r}
+                                        data-testid={`aspect-${r}`}
+                                        onClick={() => setAspect(r)}
+                                        className={`mono text-[10px] px-2 py-1 rounded transition-all ${
+                                            aspect === r
+                                                ? "bg-[var(--bg-3)] text-[var(--amber)]"
+                                                : "text-[var(--ink-3)] hover:text-[var(--ink-1)]"
+                                        }`}
+                                        title={
+                                            r === "auto"
+                                                ? "expand vertically (good for stacked patterns)"
+                                                : `${r} aspect ratio`
+                                        }
+                                    >
+                                        {r}
+                                    </button>
+                                ))}
                             </div>
-                        )}
+                        </div>
                     </div>
                     <div className="flex-1 min-h-0">
-                        <XRDPlot patterns={patterns} plotRef={plotRef} />
+                        <XRDPlot patterns={patterns} plotRef={plotRef} aspect={aspect} />
                     </div>
                 </section>
             </main>

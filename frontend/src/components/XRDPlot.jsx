@@ -96,7 +96,13 @@ const PLOT_CONFIG = {
     modeBarButtonsToRemove: ["lasso2d", "select2d"],
 };
 
-export default function XRDPlot({ patterns, plotRef }) {
+const ASPECT_RATIOS = {
+    "21:9": 21 / 9,
+    "16:9": 16 / 9,
+    "4:3": 4 / 3,
+};
+
+export default function XRDPlot({ patterns, plotRef, aspect = "16:9" }) {
     const containerRef = useRef(null);
 
     useEffect(() => {
@@ -136,12 +142,22 @@ export default function XRDPlot({ patterns, plotRef }) {
         };
     }, []);
 
+    // when aspect changes, force Plotly to resize to the new container
+    useEffect(() => {
+        if (containerRef.current) Plotly.Plots.resize(containerRef.current);
+    }, [aspect]);
+
+    const style =
+        aspect in ASPECT_RATIOS
+            ? { aspectRatio: ASPECT_RATIOS[aspect], width: "100%" }
+            : { width: "100%", height: "100%", minHeight: 480 };
+
     return (
         <div
             data-testid="xrd-plot"
             ref={containerRef}
-            className="w-full h-full"
-            style={{ minHeight: 480 }}
+            className="w-full"
+            style={style}
         />
     );
 }
