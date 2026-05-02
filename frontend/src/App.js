@@ -192,7 +192,7 @@ export default function App() {
                         </div>
                         {patterns.length > 0 && (
                             <div className="mono text-[11px] text-[var(--ink-3)] hidden md:block">
-                                scroll-to-zoom · drag-to-pan · double-click to reset
+                                scroll-to-zoom · drag-to-pan · double-click / middle-click to reset
                             </div>
                         )}
                     </div>

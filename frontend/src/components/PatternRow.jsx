@@ -137,16 +137,18 @@ export default function PatternRow({ pattern, onChange, onRemove }) {
                     label="y-offset"
                     value={pattern.offset}
                     onChange={(v) => update({ offset: v })}
-                    min={-pattern.y_max * 2}
-                    max={pattern.y_max * 4}
-                    step={pattern.y_max / 200}
-                    format={(v) => v.toFixed(0)}
+                    onReset={() => update({ offset: 0 })}
+                    min={-pattern.y_max}
+                    max={pattern.y_max * 1.5}
+                    step={pattern.y_max / 1000}
+                    format={(v) => v.toFixed(1)}
                     testId={`offset-${pattern.id}`}
                 />
                 <Slider
                     label="scale"
                     value={pattern.scale}
                     onChange={(v) => update({ scale: v })}
+                    onReset={() => update({ scale: 1 })}
                     min={0.05}
                     max={5}
                     step={0.01}
@@ -204,11 +206,17 @@ function ProcessButton({ onClick, busy, icon, label, active, testId }) {
     );
 }
 
-function Slider({ label, value, onChange, min, max, step, format, testId }) {
+function Slider({ label, value, onChange, onReset, min, max, step, format, testId }) {
     return (
         <div>
             <div className="flex justify-between mono text-[10px] text-[var(--ink-3)] mb-0.5">
-                <span>{label}</span>
+                <span
+                    onDoubleClick={onReset}
+                    className={onReset ? "cursor-pointer hover:text-[var(--amber)] transition-colors select-none" : ""}
+                    title={onReset ? "double-click to reset" : undefined}
+                >
+                    {label}
+                </span>
                 <span className="text-[var(--ink-1)]">{format(value)}</span>
             </div>
             <input
@@ -219,7 +227,8 @@ function Slider({ label, value, onChange, min, max, step, format, testId }) {
                 step={step}
                 value={value}
                 onChange={(e) => onChange(parseFloat(e.target.value))}
-                className="w-full accent-[var(--amber)]"
+                onDoubleClick={onReset}
+                className="w-full accent-[var(--amber)] cursor-pointer"
             />
         </div>
     );

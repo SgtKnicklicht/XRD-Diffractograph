@@ -111,7 +111,29 @@ export default function XRDPlot({ patterns, plotRef }) {
         if (!el) return undefined;
         const ro = new ResizeObserver(() => Plotly.Plots.resize(el));
         ro.observe(el);
-        return () => ro.disconnect();
+
+        // middle-mouse-button → reset zoom (autoscale both axes)
+        const onMouseDown = (e) => {
+            if (e.button === 1) {
+                e.preventDefault();
+                Plotly.relayout(el, {
+                    "xaxis.autorange": true,
+                    "yaxis.autorange": true,
+                });
+            }
+        };
+        // prevent the browser's default middle-click scroll-anchor behaviour
+        const onAuxClick = (e) => {
+            if (e.button === 1) e.preventDefault();
+        };
+        el.addEventListener("mousedown", onMouseDown);
+        el.addEventListener("auxclick", onAuxClick);
+
+        return () => {
+            ro.disconnect();
+            el.removeEventListener("mousedown", onMouseDown);
+            el.removeEventListener("auxclick", onAuxClick);
+        };
     }, []);
 
     return (
