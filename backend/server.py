@@ -40,6 +40,8 @@ class ParsedPattern(BaseModel):
     x_min: float
     x_max: float
     y_max: float
+    is_reference: bool = False
+    source_format: str = "xy"
 
 
 class SmoothRequest(BaseModel):
@@ -92,6 +94,127 @@ def parse_xy_text(text: str) -> tuple[list[float], list[float]]:
     return xs, ys
 
 
+def parse_pks(text: str) -> tuple[list[float], list[float]]:
+    """STOE/Match! Peak File (.pks).
+
+    Data rows have six numeric columns: D  2Theta  I(rel)  I(abs)  I(int)  FWHM.
+    We take 2Theta (col 2) and I(rel) (col 3). Data rows always start with a
+    digit (after trimming); anything else is treated as header/comment.
+    """
+    xs: list[float] = []
+    ys: list[float] = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if not (line[0].isdigit() or line[0] in "+-."):
+            continue
+        nums = _NUM_RE.findall(line)
+        if len(nums) < 6:  # real data rows have exactly 6 columns
+            continue
+        try:
+            two_theta = float(nums[1])
+            i_rel = float(nums[2])
+        except ValueError:
+            continue
+        if not (0 < two_theta < 180) or i_rel < 0:
+            continue
+        xs.append(two_theta)
+        ys.append(i_rel)
+    return xs, ys
+
+
+def parse_stoe_theo(text: str) -> tuple[list[float], list[float]]:
+    """STOE WinXPOW Theo output.
+
+    Data rows: D  2Theta  H  K  L  Mult  I/Imax  F  LP  Absc
+    Some rows contain 'absent' and must be skipped.
+    We take 2Theta (col 2) and I/Imax (col 7).
+    """
+    xs: list[float] = []
+    ys: list[float] = []
+    in_data = False
+    for raw in text.splitlines():
+        line = raw.strip()
+        if "2Theta" in line and "H" in line and "K" in line and "L" in line and "I/Imax" in line:
+            in_data = True
+            continue
+        if not in_data or not line or "absent" in line.lower():
+            continue
+        if not (line[0].isdigit() or line[0] in "+-."):
+            continue
+        parts = line.split()
+        if len(parts) < 10:  # real rows have 10 columns
+            continue
+        try:
+            two_theta = float(parts[1])
+            i_rel = float(parts[6])
+        except ValueError:
+            continue
+        if not (0 < two_theta < 180) or i_rel < 0:
+            continue
+        xs.append(two_theta)
+        ys.append(i_rel)
+    return xs, ys
+
+
+def parse_semicolon_csv(text: str) -> tuple[list[float], list[float]]:
+    """European-locale CSV (; delimited, comma as decimal separator)."""
+    xs: list[float] = []
+    ys: list[float] = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or ";" not in line:
+            continue
+        a, _, b = line.partition(";")
+        a = a.strip().replace(",", ".")
+        b = b.split(";")[0].strip().replace(",", ".")
+        try:
+            x = float(a)
+            y = float(b)
+        except ValueError:
+            continue
+        if not (-10 < x < 200):
+            continue
+        xs.append(x)
+        ys.append(y)
+    return xs, ys
+
+
+def detect_and_parse(filename: str, text: str) -> tuple[list[float], list[float], str, bool]:
+    """Auto-detect format. Returns (x, y, format_label, is_reference).
+
+    Reference files are peak lists (usually sparse, discrete 2θ values).
+    """
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    head = text[:8192].lower()
+
+    # 1) STOE / Match! peak file
+    if ext == "pks" or "pks_" in head or "match!" in head:
+        xs, ys = parse_pks(text)
+        if len(xs) >= 2:
+            return xs, ys, "pks", True
+
+    # 2) STOE WinXPOW Theo
+    if "winxpow" in head or "stoe powder" in head:
+        xs, ys = parse_stoe_theo(text)
+        if len(xs) >= 2:
+            return xs, ys, "stoe-theo", True
+
+    # 3) Semicolon CSV (European)
+    if ext == "csv" or (";" in text[:512] and "," in text[:512]):
+        xs, ys = parse_semicolon_csv(text)
+        if len(xs) >= 2:
+            is_ref = len(xs) <= 200  # sparse list → reference
+            return xs, ys, "csv", is_ref
+
+    # 4) default .xy / two-column
+    xs, ys = parse_xy_text(text)
+    # If few points, treat as reference
+    is_ref = 0 < len(xs) <= 150
+    return xs, ys, "xy", is_ref
+
+
 def snip_background(y: np.ndarray, iterations: int = 40) -> np.ndarray:
     """SNIP (Statistics-sensitive Non-linear Iterative Peak-clipping) algorithm.
 
@@ -127,17 +250,18 @@ async def parse_file(file: UploadFile = File(...)):
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"could not read file: {exc}")
 
-    xs, ys = parse_xy_text(text)
+    filename = file.filename or "pattern"
+    xs, ys, fmt, is_ref = detect_and_parse(filename, text)
     if len(xs) < 2:
         raise HTTPException(
             status_code=400,
             detail=(
-                "No numeric two-column data found. Expected lines like "
-                "`<2theta> <intensity>`."
+                "No numeric two-column data found. Supported: .xy, .xye, .txt, "
+                ".csv, .pks (STOE/Match!), WinXPOW Theo output."
             ),
         )
 
-    name = (file.filename or "pattern").rsplit(".", 1)[0]
+    name = filename.rsplit(".", 1)[0]
     return ParsedPattern(
         name=name,
         x=xs,
@@ -146,6 +270,8 @@ async def parse_file(file: UploadFile = File(...)):
         x_min=min(xs),
         x_max=max(xs),
         y_max=max(ys),
+        is_reference=is_ref,
+        source_format=fmt,
     )
 
 

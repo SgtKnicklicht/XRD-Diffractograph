@@ -13,6 +13,7 @@ let _id = 0;
 const nextId = () => `p${++_id}`;
 
 function makePattern(data, index) {
+    const isRef = !!data.is_reference;
     return {
         id: nextId(),
         name: data.name,
@@ -22,9 +23,11 @@ function makePattern(data, index) {
         x_min: data.x_min,
         x_max: data.x_max,
         y_max: data.y_max,
+        source_format: data.source_format || "xy",
         color: PATTERN_COLORS[index % PATTERN_COLORS.length],
         visible: true,
-        mode: "line", // 'line' | 'droplines'
+        isReference: isRef,
+        mode: isRef ? "droplines" : "line",
         offset: 0,
         scale: 1,
         processed: null,

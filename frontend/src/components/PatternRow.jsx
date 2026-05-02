@@ -9,14 +9,31 @@ import {
     BarChart3,
     Undo2,
     Loader2,
+    CheckCircle2,
+    Circle,
 } from "lucide-react";
 import { smoothPattern, subtractBackground } from "../lib/xrdApi";
 import { toast } from "sonner";
+
+const FORMAT_LABEL = {
+    pks: "stoe · pks",
+    "stoe-theo": "winxpow",
+    csv: "csv",
+    xy: "xy",
+};
 
 export default function PatternRow({ pattern, onChange, onRemove }) {
     const [busy, setBusy] = useState(null); // 'smooth' | 'bg' | null
 
     const update = (patch) => onChange({ ...pattern, ...patch });
+
+    const toggleReference = () => {
+        const next = !pattern.isReference;
+        update({
+            isReference: next,
+            mode: next ? "droplines" : "line",
+        });
+    };
 
     const handleSmooth = async () => {
         try {
@@ -106,6 +123,29 @@ export default function PatternRow({ pattern, onChange, onRemove }) {
                     </span>
                 </div>
             </div>
+
+            <button
+                data-testid={`reference-toggle-${pattern.id}`}
+                onClick={toggleReference}
+                className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md border transition-all ${
+                    pattern.isReference
+                        ? "border-[var(--teal)] bg-[rgba(77,217,200,0.08)] text-[var(--teal)]"
+                        : "border-[var(--line)] text-[var(--ink-2)] hover:text-[var(--ink-0)] hover:border-[var(--ink-3)]"
+                }`}
+                title="Mark this pattern as a reference (droplines)"
+            >
+                <span className="flex items-center gap-1.5 mono text-[11px]">
+                    {pattern.isReference ? (
+                        <CheckCircle2 size={13} />
+                    ) : (
+                        <Circle size={13} />
+                    )}
+                    reference pattern
+                </span>
+                <span className="mono text-[10px] opacity-70">
+                    {FORMAT_LABEL[pattern.source_format] || pattern.source_format}
+                </span>
+            </button>
 
             <div className="flex gap-1">
                 <button

@@ -47,7 +47,7 @@ export default function Dropzone({ onParsed }) {
             <input
                 ref={inputRef}
                 type="file"
-                accept=".xy,.xye,.txt,.dat,.csv"
+                accept=".xy,.xye,.txt,.dat,.csv,.pks"
                 multiple
                 hidden
                 onChange={(e) => {
@@ -90,7 +90,10 @@ export function UploadButton({ onParsed }) {
                         try {
                             const data = await parseFile(file);
                             onParsed(data);
-                            toast.success(`Loaded "${data.name}"`);
+                            const refNote = data.is_reference ? " · reference" : "";
+                            toast.success(
+                                `Loaded "${data.name}" · ${data.source_format}${refNote}`
+                            );
                         } catch (err) {
                             toast.error(err.response?.data?.detail || err.message);
                         }
