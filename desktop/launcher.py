@@ -13,6 +13,14 @@ import time
 import webbrowser
 from pathlib import Path
 
+# Windowed PyInstaller builds (console=False) set sys.stdout/stderr to None.
+# uvicorn's DefaultFormatter calls sys.stdout.isatty(), which then crashes with
+# AttributeError. Redirect to devnull before any logging machinery initialises.
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w", buffering=1)
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", buffering=1)
+
 # Make the bundled `backend/` directory importable regardless of where the
 # .exe is launched from. PyInstaller sets `sys._MEIPASS` to the temp extract
 # dir for one-file builds; for one-folder builds we fall back to argv[0].
