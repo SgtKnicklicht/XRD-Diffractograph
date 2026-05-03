@@ -11,12 +11,14 @@ import io
 import logging
 import os
 import re
+import sys
 from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
 from dotenv import load_dotenv
 from fastapi import APIRouter, FastAPI, File, HTTPException, UploadFile
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from scipy.signal import savgol_filter
 from starlette.middleware.cors import CORSMiddleware
@@ -379,3 +381,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Serve the built React frontend if a ./static directory is bundled next to
+# this script (used by the desktop / PyInstaller build).
+def _resolve_static_dir() -> Path | None:
+    candidates = [
+        ROOT_DIR / "static",
+        Path(getattr(sys, "_MEIPASS", "")) / "static" if hasattr(sys, "_MEIPASS") else None,
+        Path(sys.argv[0]).resolve().parent / "static" if sys.argv and sys.argv[0] else None,
+    ]
+    for c in candidates:
+        if c and c.is_dir() and (c / "index.html").exists():
+            return c
+    return None
+
+
+_static_dir = _resolve_static_dir()
+if _static_dir is not None:
+    app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="static")
+    log.info("serving frontend from %s", _static_dir)
