@@ -1,15 +1,11 @@
 import { useEffect, useRef } from "react";
 import Plotly from "plotly.js-basic-dist-min";
 
-/* Builds traces. Reference / dropline patterns are rendered as a single
-   scatter trace with NaN-separated segments, one vertical line per peak. */
 function buildTraces(patterns) {
     const traces = [];
     for (const p of patterns) {
         if (!p.visible) continue;
-        const yShown = (p.processed?.y ?? p.y).map(
-            (v) => v * p.scale + p.offset
-        );
+        const yShown = (p.processed?.y ?? p.y).map((v) => v * p.scale + p.offset);
         if (p.mode === "droplines") {
             const xs = [];
             const ys = [];
@@ -43,98 +39,123 @@ function buildTraces(patterns) {
     return traces;
 }
 
-const DARK_LAYOUT = {
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)",
-    font: { family: "JetBrains Mono, monospace", color: "#c9d1de", size: 12 },
+const COMMON_LAYOUT = {
     margin: { l: 70, r: 30, t: 30, b: 60 },
-    xaxis: {
-        title: { text: "2θ  /  degrees", font: { size: 13, color: "#8e98ac" } },
-        gridcolor: "rgba(255,255,255,0.05)",
-        zerolinecolor: "rgba(255,255,255,0.08)",
-        linecolor: "#2a3142",
-        ticks: "outside",
-        tickcolor: "#3a4256",
-        mirror: true,
-        showline: true,
-    },
-    yaxis: {
-        title: { text: "Intensity  /  a.u.", font: { size: 13, color: "#8e98ac" } },
-        gridcolor: "rgba(255,255,255,0.05)",
-        zerolinecolor: "rgba(255,255,255,0.08)",
-        linecolor: "#2a3142",
-        ticks: "outside",
-        tickcolor: "#3a4256",
-        mirror: true,
-        showline: true,
-    },
-    legend: {
-        bgcolor: "rgba(17,21,31,0.85)",
-        bordercolor: "#2a3142",
-        borderwidth: 1,
-        font: { color: "#f1f4fb", size: 11 },
-    },
-    hoverlabel: {
-        bgcolor: "#11151f",
-        bordercolor: "#3a4256",
-        font: { color: "#f1f4fb", family: "JetBrains Mono, monospace" },
-    },
     dragmode: "zoom",
+};
+
+const THEME_LAYOUTS = {
+    dark: {
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        font: { family: "JetBrains Mono, monospace", color: "#c9d1de", size: 12 },
+        xaxis: {
+            title: { text: "2θ  /  degrees", font: { size: 13, color: "#8e98ac" } },
+            gridcolor: "rgba(255,255,255,0.05)",
+            zerolinecolor: "rgba(255,255,255,0.08)",
+            linecolor: "#2a3142",
+            ticks: "outside",
+            tickcolor: "#3a4256",
+            mirror: true,
+            showline: true,
+        },
+        yaxis: {
+            title: { text: "Intensity  /  a.u.", font: { size: 13, color: "#8e98ac" } },
+            gridcolor: "rgba(255,255,255,0.05)",
+            zerolinecolor: "rgba(255,255,255,0.08)",
+            linecolor: "#2a3142",
+            ticks: "outside",
+            tickcolor: "#3a4256",
+            mirror: true,
+            showline: true,
+        },
+        legend: {
+            bgcolor: "rgba(17,21,31,0.85)",
+            bordercolor: "#2a3142",
+            borderwidth: 1,
+            font: { color: "#f1f4fb", size: 11 },
+        },
+        hoverlabel: {
+            bgcolor: "#11151f",
+            bordercolor: "#3a4256",
+            font: { color: "#f1f4fb", family: "JetBrains Mono, monospace" },
+        },
+    },
+    light: {
+        paper_bgcolor: "#ffffff",
+        plot_bgcolor: "#ffffff",
+        font: { family: "JetBrains Mono, monospace", color: "#1f2937", size: 12 },
+        xaxis: {
+            title: { text: "2θ  /  degrees", font: { size: 13, color: "#4b5563" } },
+            gridcolor: "rgba(15,23,42,0.09)",
+            zerolinecolor: "rgba(15,23,42,0.18)",
+            linecolor: "#94a3b8",
+            ticks: "outside",
+            tickcolor: "#94a3b8",
+            mirror: true,
+            showline: true,
+        },
+        yaxis: {
+            title: { text: "Intensity  /  a.u.", font: { size: 13, color: "#4b5563" } },
+            gridcolor: "rgba(15,23,42,0.09)",
+            zerolinecolor: "rgba(15,23,42,0.18)",
+            linecolor: "#94a3b8",
+            ticks: "outside",
+            tickcolor: "#94a3b8",
+            mirror: true,
+            showline: true,
+        },
+        legend: {
+            bgcolor: "rgba(255,255,255,0.9)",
+            bordercolor: "#cbd5e1",
+            borderwidth: 1,
+            font: { color: "#111827", size: 11 },
+        },
+        hoverlabel: {
+            bgcolor: "#ffffff",
+            bordercolor: "#94a3b8",
+            font: { color: "#111827", family: "JetBrains Mono, monospace" },
+        },
+    },
 };
 
 const PLOT_CONFIG = {
     displaylogo: false,
     responsive: true,
     scrollZoom: true,
-    toImageButtonOptions: {
-        format: "png",
-        filename: "xrd-pattern",
-        height: 720,
-        width: 1280,
-        scale: 2,
-    },
+    toImageButtonOptions: { format: "png", filename: "xrd-pattern", height: 720, width: 1280, scale: 2 },
     modeBarButtonsToRemove: ["lasso2d", "select2d"],
 };
 
-const ASPECT_RATIOS = {
-    "21:9": 21 / 9,
-    "16:9": 16 / 9,
-    "4:3": 4 / 3,
-};
+const ASPECT_RATIOS = { "21:9": 21 / 9, "16:9": 16 / 9, "4:3": 4 / 3 };
 
-export default function XRDPlot({ patterns, plotRef, aspect = "16:9" }) {
+export default function XRDPlot({ patterns, plotRef, aspect = "16:9", plotTheme = "dark" }) {
     const containerRef = useRef(null);
 
     useEffect(() => {
         if (!containerRef.current) return;
         const traces = buildTraces(patterns);
-        Plotly.react(containerRef.current, traces, DARK_LAYOUT, PLOT_CONFIG);
+        const layout = { ...COMMON_LAYOUT, ...(THEME_LAYOUTS[plotTheme] || THEME_LAYOUTS.dark) };
+        Plotly.react(containerRef.current, traces, layout, PLOT_CONFIG);
         if (plotRef) plotRef.current = containerRef.current;
-    }, [patterns, plotRef]);
+    }, [patterns, plotRef, plotTheme]);
 
     useEffect(() => {
         const el = containerRef.current;
         if (!el) return undefined;
         const ro = new ResizeObserver(() => Plotly.Plots.resize(el));
         ro.observe(el);
-
-        // middle-mouse-button → reset zoom (autoscale both axes)
         const onMouseDown = (e) => {
             if (e.button === 1) {
                 e.preventDefault();
-                Plotly.relayout(el, {
-                    "xaxis.autorange": true,
-                    "yaxis.autorange": true,
-                });
+                Plotly.relayout(el, { "xaxis.autorange": true, "yaxis.autorange": true });
             }
         };
-        // prevent the browser's default middle-click scroll-anchor behaviour
         const onAuxClick = (e) => {
             if (e.button === 1) e.preventDefault();
         };
         el.addEventListener("mousedown", onMouseDown);
         el.addEventListener("auxclick", onAuxClick);
-
         return () => {
             ro.disconnect();
             el.removeEventListener("mousedown", onMouseDown);
@@ -142,22 +163,10 @@ export default function XRDPlot({ patterns, plotRef, aspect = "16:9" }) {
         };
     }, []);
 
-    // when aspect changes, force Plotly to resize to the new container
     useEffect(() => {
         if (containerRef.current) Plotly.Plots.resize(containerRef.current);
     }, [aspect]);
 
-    const style =
-        aspect in ASPECT_RATIOS
-            ? { aspectRatio: ASPECT_RATIOS[aspect], width: "100%" }
-            : { width: "100%", height: "100%", minHeight: 480 };
-
-    return (
-        <div
-            data-testid="xrd-plot"
-            ref={containerRef}
-            className="w-full"
-            style={style}
-        />
-    );
+    const style = aspect in ASPECT_RATIOS ? { aspectRatio: ASPECT_RATIOS[aspect], width: "100%" } : { width: "100%", height: "100%", minHeight: 480 };
+    return <div data-testid="xrd-plot" ref={containerRef} className="w-full" style={style} />;
 }
