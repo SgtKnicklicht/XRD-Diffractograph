@@ -28,7 +28,7 @@ export const THEMED_PLOT_PALETTES = {
             warm: { label: "warm", colors: ["#fff7ad", "#ffd166", "#f59e0b", "#f97316", "#ef4444", "#fb7185", "#fdba74", "#ffffff"] },
         },
         gradient: {
-            plasma: { label: "plasma", colors: ["#0d0887", "#4c02a1", "#7e03a8", "#a82296", "#cb4679", "#e56b5d", "#f89441", "#f0a51f", "#d98f00"] },
+            plasma: { label: "plasma", colors: ["#3b2cff", "#5b21b6", "#7e22ce", "#a82296", "#cb4679", "#e56b5d", "#f89441", "#f0a51f", "#d98f00"] },
             viridis: { label: "viridis", colors: ["#6d28d9", "#5b3f9a", "#365c8d", "#277f8e", "#1fa187", "#4ac16d", "#a0da39", "#fde725"] },
             blueYellow: { label: "blue→yellow", colors: ["#1d4ed8", "#2563eb", "#0284c7", "#0891b2", "#0d9488", "#65a30d", "#ca8a04", "#facc15"] },
         },
