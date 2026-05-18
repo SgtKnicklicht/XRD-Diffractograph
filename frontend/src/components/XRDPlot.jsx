@@ -28,10 +28,7 @@ function buildTraces(patterns, yBaseline) {
             const xs = [];
             const ys = [];
             const baseline = Number.isFinite(yBaseline) ? yBaseline : 0;
-            for (let i = 0; i < p.x.length; i++) {
-                xs.push(p.x[i], p.x[i], NaN);
-                ys.push(baseline, yShown[i], NaN);
-            }
+            for (let i = 0; i < p.x.length; i++) { xs.push(p.x[i], p.x[i], NaN); ys.push(baseline, yShown[i], NaN); }
             traces.push({ type: "scatter", mode: "lines", name: p.name, x: xs, y: ys, line: { color: p.color, width: 1.4 }, hovertemplate: `${p.name}<br>2θ = %{x:.3f}°<br>Rel. I = %{y:.2f}<extra></extra>`, connectgaps: false });
         } else {
             traces.push({ type: "scatter", mode: "lines", name: p.name, x: p.x, y: yShown, line: { color: p.color, width: 1.4, shape: "spline", smoothing: 0.3 }, hovertemplate: `${p.name}<br>2θ = %{x:.3f}°<br>Rel. I = %{y:.2f}<extra></extra>` });
@@ -49,16 +46,17 @@ const THEME_LAYOUTS = {
 const PLOT_CONFIG = { displaylogo: false, responsive: true, scrollZoom: true, toImageButtonOptions: { format: "png", filename: "xrd-pattern", height: 720, width: 1280, scale: 2 }, modeBarButtonsToRemove: ["lasso2d", "select2d"] };
 const ASPECT_RATIOS = { "21:9": 21 / 9, "16:9": 16 / 9, "4:3": 4 / 3 };
 
-export default function XRDPlot({ patterns, plotRef, aspect = "16:9", plotTheme = "dark" }) {
+export default function XRDPlot({ patterns, plotRef, aspect = "16:9", plotTheme = "dark", hideYTickLabels = false }) {
     const containerRef = useRef(null);
     useEffect(() => {
         if (!containerRef.current) return;
+        const theme = THEME_LAYOUTS[plotTheme] || THEME_LAYOUTS.dark;
         const bounds = getVisibleYBounds(patterns);
         const traces = buildTraces(patterns, bounds.min);
-        const layout = { ...COMMON_LAYOUT, ...(THEME_LAYOUTS[plotTheme] || THEME_LAYOUTS.dark), yaxis: { ...(THEME_LAYOUTS[plotTheme] || THEME_LAYOUTS.dark).yaxis, range: [bounds.min, bounds.max] } };
+        const layout = { ...COMMON_LAYOUT, ...theme, yaxis: { ...theme.yaxis, range: [bounds.min, bounds.max], showticklabels: !hideYTickLabels, ticks: hideYTickLabels ? "" : theme.yaxis.ticks } };
         Plotly.react(containerRef.current, traces, layout, PLOT_CONFIG);
         if (plotRef) plotRef.current = containerRef.current;
-    }, [patterns, plotRef, plotTheme]);
+    }, [patterns, plotRef, plotTheme, hideYTickLabels]);
     useEffect(() => { const el = containerRef.current; if (!el) return undefined; const ro = new ResizeObserver(() => Plotly.Plots.resize(el)); ro.observe(el); const onMouseDown = (e) => { if (e.button === 1) { e.preventDefault(); Plotly.relayout(el, { "xaxis.autorange": true, "yaxis.autorange": true }); } }; const onAuxClick = (e) => { if (e.button === 1) e.preventDefault(); }; el.addEventListener("mousedown", onMouseDown); el.addEventListener("auxclick", onAuxClick); return () => { ro.disconnect(); el.removeEventListener("mousedown", onMouseDown); el.removeEventListener("auxclick", onAuxClick); }; }, []);
     useEffect(() => { if (containerRef.current) Plotly.Plots.resize(containerRef.current); }, [aspect]);
     const style = aspect in ASPECT_RATIOS ? { aspectRatio: ASPECT_RATIOS[aspect], width: "100%" } : { width: "100%", height: "100%", minHeight: 480 };
