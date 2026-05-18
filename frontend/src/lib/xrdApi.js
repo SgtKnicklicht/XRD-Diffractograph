@@ -23,13 +23,13 @@ export const THEMED_PLOT_PALETTES = {
     dark: {
         independent: {
             dark: { label: "dark", colors: ["#f5b94a", "#7fd1ff", "#ff7a6b", "#b08bff", "#a3e635", "#ffd166", "#f368e0", "#ffffff"] },
-            paper: { label: "paper", colors: ["#f8fafc", "#f97316", "#38bdf8", "#22c55e", "#f43f5e", "#a78bfa", "#facc15", "#2dd4bf"] },
-            vivid: { label: "vivid", colors: ["#00e5ff", "#ffea00", "#ff4081", "#76ff03", "#ff9100", "#b388ff", "#64ffda", "#eeeeee"] },
+            paper: { label: "paper", colors: ["#ffffff", "#ff5a5f", "#7fd1ff", "#22c55e", "#f5b94a", "#b08bff", "#f368e0", "#2dd4bf"] },
+            vivid: { label: "vivid", colors: ["#00e5ff", "#ffcc00", "#ff4081", "#76ff03", "#ff9100", "#b388ff", "#64ffda", "#eeeeee"] },
             warm: { label: "warm", colors: ["#fff7ad", "#ffd166", "#f59e0b", "#f97316", "#ef4444", "#fb7185", "#fdba74", "#ffffff"] },
         },
         gradient: {
-            plasma: { label: "plasma", colors: ["#0d0887", "#4c02a1", "#7e03a8", "#a82296", "#cb4679", "#e56b5d", "#f89441", "#fdc328", "#f0f921"] },
-            viridis: { label: "viridis", colors: ["#440154", "#46327e", "#365c8d", "#277f8e", "#1fa187", "#4ac16d", "#a0da39", "#fde725"] },
+            plasma: { label: "plasma", colors: ["#0d0887", "#4c02a1", "#7e03a8", "#a82296", "#cb4679", "#e56b5d", "#f89441", "#f0a51f", "#d98f00"] },
+            viridis: { label: "viridis", colors: ["#6d28d9", "#5b3f9a", "#365c8d", "#277f8e", "#1fa187", "#4ac16d", "#a0da39", "#fde725"] },
             blueYellow: { label: "blue→yellow", colors: ["#1d4ed8", "#2563eb", "#0284c7", "#0891b2", "#0d9488", "#65a30d", "#ca8a04", "#facc15"] },
         },
     },
@@ -41,7 +41,7 @@ export const THEMED_PLOT_PALETTES = {
             origin: { label: "origin", colors: ["#000000", "#ff0000", "#0000ff", "#008000", "#ff00ff", "#00a0a0", "#ffa500", "#666666"] },
         },
         gradient: {
-            plasma: { label: "plasma", colors: ["#0d0887", "#4c02a1", "#7e03a8", "#a82296", "#cb4679", "#e56b5d", "#f89441", "#fdc328", "#f0f921"] },
+            plasma: { label: "plasma", colors: ["#0d0887", "#4c02a1", "#7e03a8", "#a82296", "#cb4679", "#e56b5d", "#f89441", "#f0a51f", "#d98f00"] },
             viridis: { label: "viridis", colors: ["#440154", "#46327e", "#365c8d", "#277f8e", "#1fa187", "#4ac16d", "#a0da39", "#fde725"] },
             blueYellow: { label: "blue→yellow", colors: ["#1d4ed8", "#2563eb", "#0284c7", "#0891b2", "#0d9488", "#65a30d", "#ca8a04", "#facc15"] },
         },
