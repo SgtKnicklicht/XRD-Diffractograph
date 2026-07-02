@@ -1,9 +1,9 @@
 """XRD pattern viewer backend.
 
 Endpoints:
-- POST /api/xrd/parse   : upload .xy text, return parsed (x, y) arrays
+- GET  /healthz         : service health check
+- POST /api/xrd/parse   : upload XRD data, return parsed (x, y) arrays
 - POST /api/xrd/smooth  : Savitzky-Golay smoothing
-- POST /api/xrd/background : SNIP background subtraction
 """
 from __future__ import annotations
 
@@ -319,6 +319,11 @@ def snip_background(y: np.ndarray, iterations: int = 40) -> np.ndarray:
 
 
 # ------------- routes -------------
+@app.get("/healthz")
+async def healthz():
+    return {"status": "ok"}
+
+
 @api.get("/")
 async def root():
     return {"service": "xrd-viewer", "status": "ok"}
@@ -376,7 +381,7 @@ async def smooth(req: SmoothRequest):
 app.include_router(api)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_origins=[origin.strip() for origin in os.environ.get("CORS_ORIGINS", "*").split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -388,6 +393,7 @@ app.add_middleware(
 def _resolve_static_dir() -> Path | None:
     candidates = [
         ROOT_DIR / "static",
+        ROOT_DIR.parent / "frontend" / "build",
         Path(getattr(sys, "_MEIPASS", "")) / "static" if hasattr(sys, "_MEIPASS") else None,
         Path(sys.argv[0]).resolve().parent / "static" if sys.argv and sys.argv[0] else None,
     ]
