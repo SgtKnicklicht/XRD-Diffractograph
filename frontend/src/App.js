@@ -243,7 +243,7 @@ export default function App() {
                     </div>
                 </div>
             </header>
-            <main className="max-w-[1600px] mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
+            <main className="max-w-[1600px] mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6">
                 <aside className="space-y-4">
                     <Dropzone onParsed={addPattern} />
                     {patterns.length > 0 && (
@@ -285,7 +285,7 @@ export default function App() {
                     <div className="flex-1 min-h-0"><XRDPlot patterns={patterns} plotRef={plotRef} aspect={aspect} /></div>
                 </section>
             </main>
-            <footer className="border-t border-[var(--line-soft)] mt-4"><div className="max-w-[1600px] mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-3 text-[11px] mono text-[var(--ink-3)]"><span>savitzky-golay smoothing · <span className="text-[var(--ink-1)]">scipy</span> + <span className="text-[var(--ink-1)]">plotly</span></span><span className="flex items-center gap-1.5"><Github size={11} /> open-source XRD tool</span></div></footer>
+            <footer className="border-t border-[var(--line-soft)] mt-4"><div className="max-w-[1600px] mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-3 text-[11px] mono text-[var(--ink-3)]"><span>savitzky-golay smoothing · <span className="text-[var(--ink-1)]">browser</span> + <span className="text-[var(--ink-1)]">plotly</span></span><span className="flex items-center gap-1.5"><Github size={11} /> open-source XRD tool</span></div></footer>
         </div>
     );
 }
@@ -293,9 +293,9 @@ export default function App() {
 function WorkflowPanel({ stackMode, setStackMode, onAutoStack, onResetOffsets, onPalette, patterns, selectedPatternId, setSelectedPatternId, fromRadiation, setFromRadiation, toRadiation, setToRadiation, onConvert, setAllCollapsed }) {
     return <div className="surface p-3 space-y-3">
         <div className="flex items-center justify-between"><div className="mono text-[10px] uppercase tracking-[0.16em] text-[var(--ink-3)]">plot workflow</div><button onClick={() => setAllCollapsed(true)} className="mini-btn"><ChevronsUpDown size={12} /> collapse all</button></div>
-        <div className="grid grid-cols-[1fr_auto_auto] gap-1.5"><select value={stackMode} onChange={(e) => setStackMode(e.target.value)} className="control"><option value="compact">compact</option><option value="normal">normal</option><option value="wide">wide</option></select><button onClick={onAutoStack} className="mini-btn text-[var(--violet)]"><Layers3 size={12} /> auto stack</button><button onClick={onResetOffsets} className="mini-btn"><RotateCcw size={12} /> reset</button></div>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-1.5"><select value={stackMode} onChange={(e) => setStackMode(e.target.value)} className="control"><option value="compact">compact</option><option value="normal">normal</option><option value="wide">wide</option></select><button onClick={onAutoStack} className="mini-btn text-[var(--violet)]"><Layers3 size={12} /> auto stack</button><button onClick={onResetOffsets} className="mini-btn"><RotateCcw size={12} /> reset</button></div>
         <div><div className="mono text-[10px] text-[var(--ink-3)] mb-1">quick palette</div><div className="flex flex-wrap gap-1.5">{Object.entries(PLOT_PALETTES).map(([key, palette]) => <button key={key} onClick={() => onPalette(key)} className="mini-btn"><Palette size={12} /> {palette.label}</button>)}</div></div>
-        <div className="border-t border-[var(--line-soft)] pt-3 space-y-2"><div className="mono text-[10px] text-[var(--ink-3)]">radiation conversion · duplicate pattern</div><select value={selectedPatternId} onChange={(e) => setSelectedPatternId(e.target.value)} className="control w-full">{patterns.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><div className="grid grid-cols-[1fr_1fr_auto] gap-1.5"><select value={fromRadiation} onChange={(e) => setFromRadiation(e.target.value)} className="control">{Object.keys(XRAY_WAVELENGTHS).map((r) => <option key={r}>{r}</option>)}</select><select value={toRadiation} onChange={(e) => setToRadiation(e.target.value)} className="control">{Object.keys(XRAY_WAVELENGTHS).map((r) => <option key={r}>{r}</option>)}</select><button onClick={onConvert} className="mini-btn text-[var(--amber)]">convert</button></div></div>
+        <div className="border-t border-[var(--line-soft)] pt-3 space-y-2"><div className="mono text-[10px] text-[var(--ink-3)]">radiation conversion · duplicate pattern</div><select value={selectedPatternId} onChange={(e) => setSelectedPatternId(e.target.value)} className="control w-full">{patterns.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-1.5"><select value={fromRadiation} onChange={(e) => setFromRadiation(e.target.value)} className="control">{Object.keys(XRAY_WAVELENGTHS).map((r) => <option key={r}>{r}</option>)}</select><select value={toRadiation} onChange={(e) => setToRadiation(e.target.value)} className="control">{Object.keys(XRAY_WAVELENGTHS).map((r) => <option key={r}>{r}</option>)}</select><button onClick={onConvert} className="mini-btn text-[var(--amber)]">convert</button></div></div>
     </div>;
 }
 
