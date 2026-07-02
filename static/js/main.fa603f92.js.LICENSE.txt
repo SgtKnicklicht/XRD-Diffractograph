@@ -1,0 +1,79 @@
+/*! Bundled license information:
+  
+  native-promise-only/lib/npo.src.js:
+    (*! Native Promise Only
+        v0.8.1 (c) Kyle Simpson
+        MIT License: http://getify.mit-license.org
+    *)
+  
+  polybooljs/index.js:
+    (*
+     * @copyright 2016 Sean Connelly (@voidqk), http://syntheti.cc
+     * @license MIT
+     * @preserve Project Home: https://github.com/voidqk/polybooljs
+     *)
+  
+  object-assign/index.js:
+    (*
+    object-assign
+    (c) Sindre Sorhus
+    @license MIT
+    *)
+  */
+
+/**
+ * @license React
+ * react-dom-client.production.js
+ *
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+/**
+ * @license React
+ * react-dom.production.js
+ *
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+/**
+ * @license React
+ * react-jsx-runtime.production.js
+ *
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+/**
+ * @license React
+ * react.production.js
+ *
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+/**
+ * @license React
+ * scheduler.production.js
+ *
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+/**
+ * @license lucide-react v0.507.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
