@@ -1,0 +1,13 @@
+.git
+.emergent
+memory
+test_reports
+desktop/build
+frontend/node_modules
+frontend/build
+backend/__pycache__
+backend/.venv
+**/__pycache__
+**/*.pyc
+.env
+.env.*
