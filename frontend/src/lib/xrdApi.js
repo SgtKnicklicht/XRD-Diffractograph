@@ -1,20 +1,290 @@
-import axios from "axios";
+const NUM_RE = /[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?/g;
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
-export const API = `${BACKEND_URL}/api`;
+function parseXYText(text) {
+    const x = [];
+    const y = [];
+
+    for (const raw of text.split(/\r?\n/)) {
+        const line = raw.trim();
+        if (!line) continue;
+        if ("#%;!*/".includes(line[0]) && !(line[0] >= "0" && line[0] <= "9") && !"+-.".includes(line[0])) {
+            continue;
+        }
+
+        const nums = line.match(NUM_RE);
+        if (!nums || nums.length < 2) continue;
+
+        const xx = Number(nums[0]);
+        const yy = Number(nums[1]);
+        if (!Number.isFinite(xx) || !Number.isFinite(yy)) continue;
+
+        x.push(xx);
+        y.push(yy);
+    }
+
+    return { x, y };
+}
+
+function parsePKS(text) {
+    const x = [];
+    const y = [];
+
+    for (const raw of text.split(/\r?\n/)) {
+        const line = raw.trim();
+        if (!line || (!/^[+\-.0-9]/.test(line))) continue;
+
+        const nums = line.match(NUM_RE);
+        if (!nums || nums.length < 6) continue;
+
+        const twoTheta = Number(nums[1]);
+        const intensity = Number(nums[2]);
+        if (!Number.isFinite(twoTheta) || !Number.isFinite(intensity)) continue;
+        if (twoTheta <= 0 || twoTheta >= 180 || intensity < 0) continue;
+
+        x.push(twoTheta);
+        y.push(intensity);
+    }
+
+    return { x, y };
+}
+
+function parseStoeTheo(text) {
+    const x = [];
+    const y = [];
+    let inData = false;
+
+    for (const raw of text.split(/\r?\n/)) {
+        const line = raw.trim();
+        if (line.includes("2Theta") && line.includes("H") && line.includes("K") && line.includes("L") && line.includes("I/Imax")) {
+            inData = true;
+            continue;
+        }
+        if (!inData || !line || line.toLowerCase().includes("absent") || !/^[+\-.0-9]/.test(line)) continue;
+
+        const parts = line.split(/\s+/);
+        if (parts.length < 10) continue;
+
+        const twoTheta = Number(parts[1]);
+        const intensity = Number(parts[6]);
+        if (!Number.isFinite(twoTheta) || !Number.isFinite(intensity)) continue;
+        if (twoTheta <= 0 || twoTheta >= 180 || intensity < 0) continue;
+
+        x.push(twoTheta);
+        y.push(intensity);
+    }
+
+    return { x, y };
+}
+
+function parseSemicolonCSV(text) {
+    const x = [];
+    const y = [];
+
+    for (const raw of text.split(/\r?\n/)) {
+        const line = raw.trim();
+        if (!line || !line.includes(";")) continue;
+
+        const [a, b] = line.split(";");
+        const xx = Number((a || "").trim().replace(",", "."));
+        const yy = Number((b || "").trim().replace(",", "."));
+        if (!Number.isFinite(xx) || !Number.isFinite(yy)) continue;
+        if (xx <= -10 || xx >= 200) continue;
+
+        x.push(xx);
+        y.push(yy);
+    }
+
+    return { x, y };
+}
+
+function parseStoeRaw(buffer) {
+    const bytes = new Uint8Array(buffer);
+    const magic = new TextDecoder("ascii").decode(bytes.slice(0, 8));
+    if (bytes.length < 32 || magic !== "RAW_1.06") return { x: [], y: [] };
+
+    const view = new DataView(buffer);
+    const readF32 = (offset) => {
+        if (offset < 0 || offset + 4 > bytes.length) return null;
+        const value = view.getFloat32(offset, true);
+        return Number.isFinite(value) ? value : null;
+    };
+
+    let step = readF32(342);
+    if (!step || step <= 0.001 || step >= 1.0) {
+        step = null;
+        for (let offset = 256; offset < Math.min(2000, bytes.length) - 4; offset += 1) {
+            const value = readF32(offset);
+            if (value && value > 0.001 && value < 1.0 && Math.abs(value - Number(value.toFixed(4))) < 1e-7) {
+                step = value;
+                break;
+            }
+        }
+    }
+    if (!step) step = 0.015;
+
+    let endAngle = readF32(0x218);
+    if (!endAngle || endAngle <= 1.0 || endAngle >= 180.0) {
+        endAngle = null;
+        for (let offset = 0x200; offset < Math.min(0x400, bytes.length) - 4; offset += 4) {
+            const value = readF32(offset);
+            if (value && value > 5.0 && value <= 180.0 && Math.abs(value - Number(value.toFixed(3))) < 1e-5) {
+                endAngle = value;
+                break;
+            }
+        }
+    }
+    if (!endAngle) endAngle = 60.0;
+
+    let data = [];
+    for (const headerSize of [2948, 2944, 2048, 1024]) {
+        if (headerSize >= bytes.length) continue;
+        const nbytes = bytes.length - headerSize;
+        if (nbytes % 4 !== 0) continue;
+
+        const values = [];
+        let min = Infinity;
+        let max = -Infinity;
+        for (let offset = headerSize; offset < bytes.length; offset += 4) {
+            const value = view.getInt32(offset, true);
+            values.push(value);
+            min = Math.min(min, value);
+            max = Math.max(max, value);
+        }
+        if (values.length < 100 || min < -10 || max > 1_000_000_000) continue;
+        data = values;
+        break;
+    }
+
+    let last = data.length - 1;
+    while (last >= 0 && data[last] === 0) last -= 1;
+    data = data.slice(0, last + 1);
+    if (!data.length) return { x: [], y: [] };
+
+    const startAngle = endAngle - data.length * step;
+    return {
+        x: data.map((_, index) => startAngle + index * step),
+        y: data.map((value) => Number(value)),
+    };
+}
+
+function detectAndParse(filename, buffer) {
+    const ext = filename.includes(".") ? filename.split(".").pop().toLowerCase() : "";
+    const bytes = new Uint8Array(buffer);
+
+    if (ext === "raw" || new TextDecoder("ascii").decode(bytes.slice(0, 8)) === "RAW_1.06") {
+        const parsed = parseStoeRaw(buffer);
+        if (parsed.x.length >= 2) return { ...parsed, source_format: "stoe-raw", is_reference: false };
+    }
+
+    const text = new TextDecoder("utf-8").decode(bytes);
+    const head = text.slice(0, 8192).toLowerCase();
+
+    if (ext === "pks" || head.includes("pks_") || head.includes("match!")) {
+        const parsed = parsePKS(text);
+        if (parsed.x.length >= 2) return { ...parsed, source_format: "pks", is_reference: true };
+    }
+
+    if (head.includes("winxpow") || head.includes("stoe powder")) {
+        const parsed = parseStoeTheo(text);
+        if (parsed.x.length >= 2) return { ...parsed, source_format: "stoe-theo", is_reference: true };
+    }
+
+    if (ext === "csv" || (text.slice(0, 512).includes(";") && text.slice(0, 512).includes(","))) {
+        const parsed = parseSemicolonCSV(text);
+        if (parsed.x.length >= 2) return { ...parsed, source_format: "csv", is_reference: parsed.x.length <= 200 };
+    }
+
+    const parsed = parseXYText(text);
+    return { ...parsed, source_format: "xy", is_reference: parsed.x.length > 0 && parsed.x.length <= 150 };
+}
 
 export async function parseFile(file) {
-    const fd = new FormData();
-    fd.append("file", file);
-    const { data } = await axios.post(`${API}/xrd/parse`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
+    const buffer = await file.arrayBuffer();
+    const parsed = detectAndParse(file.name || "pattern", buffer);
+
+    if (parsed.x.length < 2) {
+        throw new Error("No numeric XRD data found. Supported: .xy, .xye, .txt, .csv, .pks, .raw, WinXPOW Theo output.");
+    }
+
+    const name = (file.name || "pattern").replace(/\.[^.]+$/, "");
+    const yMax = Math.max(...parsed.y);
+
+    return {
+        name,
+        x: parsed.x,
+        y: parsed.y,
+        points: parsed.x.length,
+        x_min: Math.min(...parsed.x),
+        x_max: Math.max(...parsed.x),
+        y_max: yMax,
+        is_reference: parsed.is_reference,
+        source_format: parsed.source_format,
+    };
+}
+
+function solveLinearSystem(matrix, vector) {
+    const n = vector.length;
+    const a = matrix.map((row, index) => [...row, vector[index]]);
+
+    for (let col = 0; col < n; col += 1) {
+        let pivot = col;
+        for (let row = col + 1; row < n; row += 1) {
+            if (Math.abs(a[row][col]) > Math.abs(a[pivot][col])) pivot = row;
+        }
+        if (Math.abs(a[pivot][col]) < 1e-12) throw new Error("smoothing matrix is singular");
+        [a[col], a[pivot]] = [a[pivot], a[col]];
+
+        const div = a[col][col];
+        for (let j = col; j <= n; j += 1) a[col][j] /= div;
+
+        for (let row = 0; row < n; row += 1) {
+            if (row === col) continue;
+            const factor = a[row][col];
+            for (let j = col; j <= n; j += 1) a[row][j] -= factor * a[col][j];
+        }
+    }
+
+    return a.map((row) => row[n]);
+}
+
+function savitzkyGolayWeights(window, polyorder) {
+    const half = Math.floor(window / 2);
+    const powers = Array.from({ length: polyorder + 1 }, (_, power) => power);
+    const normal = powers.map((rowPower) =>
+        powers.map((colPower) => {
+            let sum = 0;
+            for (let x = -half; x <= half; x += 1) sum += x ** (rowPower + colPower);
+            return sum;
+        })
+    );
+
+    const rhs = [1, ...Array(polyorder).fill(0)];
+    const coeffs = solveLinearSystem(normal, rhs);
+    return Array.from({ length: window }, (_, index) => {
+        const x = index - half;
+        return coeffs.reduce((sum, coeff, power) => sum + coeff * x ** power, 0);
     });
-    return data;
 }
 
 export async function smoothPattern(y, window = 11, polyorder = 3) {
-    const { data } = await axios.post(`${API}/xrd/smooth`, { y, window, polyorder });
-    return data.y;
+    if (!Array.isArray(y) || y.length === 0) throw new Error("no data to smooth");
+
+    let actualWindow = window % 2 === 1 ? window : window + 1;
+    actualWindow = Math.max(3, Math.min(actualWindow, y.length % 2 === 1 ? y.length : y.length - 1));
+    if (actualWindow < 3) throw new Error(`window (${window}) larger than data (${y.length})`);
+
+    const actualPolyorder = Math.min(polyorder, actualWindow - 1);
+    const half = Math.floor(actualWindow / 2);
+    const weights = savitzkyGolayWeights(actualWindow, actualPolyorder);
+
+    return y.map((_, index) => {
+        let sum = 0;
+        for (let offset = -half; offset <= half; offset += 1) {
+            const sourceIndex = Math.max(0, Math.min(y.length - 1, index + offset));
+            sum += Number(y[sourceIndex]) * weights[offset + half];
+        }
+        return sum;
+    });
 }
 
 // 8-color palette tuned for dark backgrounds — amber primary for measurements,
@@ -70,7 +340,7 @@ export function convertPatternRadiation(pattern, fromLambda, toLambda) {
     const x = [];
     const y = [];
     const sourceY = pattern.processed?.y ?? pattern.y;
-    for (let i = 0; i < pattern.x.length; i++) {
+    for (let i = 0; i < pattern.x.length; i += 1) {
         const converted = convertTwoTheta(pattern.x[i], fromLambda, toLambda);
         if (converted === null) continue;
         x.push(converted);

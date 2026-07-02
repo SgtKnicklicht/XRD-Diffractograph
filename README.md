@@ -6,7 +6,20 @@ The app parses `.xy`, `.xye`, `.txt`, `.dat`, `.csv`, `.pks`, WinXPOW text expor
 
 ## Deploy
 
-This repository is structured as one web service. The React frontend is built once and copied into the FastAPI backend, so production hosting only needs one running process.
+The XRD viewer runs fully in the browser for GitHub Pages. A Docker/FastAPI service is still available if you want a backend-hosted deployment later.
+
+### GitHub Pages
+
+1. Merge the PR into `main`.
+2. In GitHub, open `Settings` -> `Pages`.
+3. Set `Source` to `GitHub Actions`.
+4. The `Deploy GitHub Pages` workflow will build `frontend` and publish the app.
+
+The public URL should be:
+
+`https://sgtknicklicht.github.io/XRD-Diffractograph/`
+
+Do not host the repository root from `main`; that only publishes repository files, not the built React app.
 
 ### Render
 
